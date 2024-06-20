@@ -1,7 +1,11 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:rxdart/rxdart.dart';
-
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'dart:math';
+import 'dart:io';
 
 class SpinWheel extends StatefulWidget {
   const SpinWheel({Key? key}) : super(key: key);
@@ -18,9 +22,59 @@ class _SpinWheelState extends State<SpinWheel> {
     0, 10, 20, 50, 100, 200, 300
   ];
   String buttonText = "SPIN";
+  InterstitialAd? _interstitialAd;
+  bool _isAdLoading = false;
+
+  void _loadInterstitialAd(){
+    InterstitialAd.load(
+        adUnitId: 'ca-app-pub-5951546517300147/3255581973',
+        request: AdRequest(),
+        adLoadCallback: InterstitialAdLoadCallback(
+          onAdLoaded:(InterstitialAd ad){
+            setState(() {
+              _interstitialAd = ad;
+              _isAdLoading = false;
+            });
+          },
+          onAdFailedToLoad: (LoadAdError){
+            print('Interstitial ad failed to load: ');
+            setState(() {
+              _isAdLoading=false;
+            });
+          },
+        ),
+    );
+  }
+
+  void _showInterstitialAd(){
+    if(_interstitialAd == null){
+      print('Warning: attemp to show interstitial before loaded !');
+      return;
+    }
+    _interstitialAd?.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (InterstitialAd ad){
+        ad.dispose();
+        _loadInterstitialAd();
+      },
+      onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error){
+        print('Ad failed to show: $error');
+        ad.dispose();
+        _loadInterstitialAd();
+      },
+    );
+    _interstitialAd!.show();
+    _interstitialAd = null;
+  }
+
+  @override
+  void initState(){
+    super.initState();
+    _loadInterstitialAd();
+  }
 
   @override
   void dispose() {
+    _interstitialAd?.dispose();
     selected.close();
     super.dispose();
   }
@@ -28,18 +82,22 @@ class _SpinWheelState extends State<SpinWheel> {
   int clickCount =0;
   void _handleButtonClick() {
     setState(() {
+      clickCount++;
       print("Click count = " + clickCount.toString());
       if (clickCount >= 3) {
         clickCount = 0;
         // Here you can place your ad display logic
         buttonText="WATCH ADD";
+        if(!_isAdLoading && _interstitialAd != null){
+          _showInterstitialAd();
+          buttonText="SPIN";
+        }
         print("Time to show an ad!");
         // ShowAd(); // Uncomment this and implement the function to show an ad
       }
       else{
         buttonText="SPIN";
       }
-      clickCount++;
     });
   }
 
