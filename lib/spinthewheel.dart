@@ -4,8 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'dart:math';
 import 'dart:io';
+
+class AdHelper{
+  static String get interstitialAdUnitId {
+    if (Platform.isAndroid) {
+      return "ca-app-pub-3940256099942544/1033173712";
+    } else if (Platform.isIOS) {
+      return "ca-app-pub-3940256099942544/4411468910";
+    } else {
+      throw new UnsupportedError("Unsupported platform");
+    }
+  }
+}
 
 class SpinWheel extends StatefulWidget {
   const SpinWheel({Key? key}) : super(key: key);
@@ -23,53 +34,96 @@ class _SpinWheelState extends State<SpinWheel> {
   ];
   String buttonText = "SPIN";
   InterstitialAd? _interstitialAd;
-  bool _isAdLoading = false;
+  int _numInterstitialLoadAttempts =0;
+  int maxFailedLoadAttempts=3;
+  // void _loadInterstitialAd(){
+  //   InterstitialAd.load(
+  //       adUnitId: 'ca-app-pub-5951546517300147/3255581973',
+  //       request: AdRequest(),
+  //       adLoadCallback: InterstitialAdLoadCallback(
+  //         onAdLoaded:(InterstitialAd ad){
+  //           setState(() {
+  //             _interstitialAd = ad;
+  //             _isAdLoading = false;
+  //           });
+  //         },
+  //         onAdFailedToLoad: (LoadAdError){
+  //           print('Interstitial ad failed to load: ');
+  //           setState(() {
+  //             _isAdLoading=false;
+  //           });
+  //         },
+  //       ),
+  //   );
+  // }
+  //
+  // void _showInterstitialAd(){
+  //   if(_interstitialAd == null){
+  //     print('Warning: attemp to show interstitial before loaded !');
+  //     return;
+  //   }
+  //   _interstitialAd?.fullScreenContentCallback = FullScreenContentCallback(
+  //     onAdDismissedFullScreenContent: (InterstitialAd ad){
+  //       ad.dispose();
+  //       _loadInterstitialAd();
+  //     },
+  //     onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error){
+  //       print('Ad failed to show: $error');
+  //       ad.dispose();
+  //       _loadInterstitialAd();
+  //     },
+  //   );
+  //   _interstitialAd!.show();
+  //   _interstitialAd = null;
+  // }
 
-  void _loadInterstitialAd(){
+  @override
+  void initState() {
+    super.initState();
+    _createInterstitialAd();
+  }
+  void _createInterstitialAd() {
     InterstitialAd.load(
-        adUnitId: 'ca-app-pub-5951546517300147/3255581973',
+        adUnitId: AdHelper.interstitialAdUnitId,
         request: AdRequest(),
         adLoadCallback: InterstitialAdLoadCallback(
-          onAdLoaded:(InterstitialAd ad){
-            setState(() {
-              _interstitialAd = ad;
-              _isAdLoading = false;
-            });
+          onAdLoaded: (InterstitialAd ad) {
+            print('$ad loaded');
+            _interstitialAd = ad;
+            _numInterstitialLoadAttempts = 0;
+            _interstitialAd!.setImmersiveMode(true);
           },
-          onAdFailedToLoad: (LoadAdError){
-            print('Interstitial ad failed to load: ');
-            setState(() {
-              _isAdLoading=false;
-            });
+          onAdFailedToLoad: (LoadAdError error) {
+            print('InterstitialAd failed to load: $error.');
+            _numInterstitialLoadAttempts += 1;
+            _interstitialAd = null;
+            if (_numInterstitialLoadAttempts < maxFailedLoadAttempts) {
+              _createInterstitialAd();
+            }
           },
-        ),
-    );
+        ));
   }
-
-  void _showInterstitialAd(){
-    if(_interstitialAd == null){
-      print('Warning: attemp to show interstitial before loaded !');
+  void _showInterstitialAd() {
+    if (_interstitialAd == null) {
+      print('Warning: attempt to show interstitial before loaded.');
       return;
     }
-    _interstitialAd?.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (InterstitialAd ad){
+    _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (InterstitialAd ad) =>
+          print('ad onAdShowedFullScreenContent.'),
+      onAdDismissedFullScreenContent: (InterstitialAd ad) {
+        print('$ad onAdDismissedFullScreenContent.');
         ad.dispose();
-        _loadInterstitialAd();
+        _createInterstitialAd();
       },
-      onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error){
-        print('Ad failed to show: $error');
+      onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error) {
+        print('$ad onAdFailedToShowFullScreenContent: $error');
         ad.dispose();
-        _loadInterstitialAd();
+        _createInterstitialAd();
       },
     );
     _interstitialAd!.show();
     _interstitialAd = null;
-  }
-
-  @override
-  void initState(){
-    super.initState();
-    _loadInterstitialAd();
   }
 
   @override
@@ -80,26 +134,34 @@ class _SpinWheelState extends State<SpinWheel> {
   }
 
   int clickCount =0;
+
   void _handleButtonClick() {
     setState(() {
       clickCount++;
-      print("Click count = " + clickCount.toString());
+      print('Click Count'+ clickCount.toString());
       if (clickCount >= 3) {
         clickCount = 0;
-        // Here you can place your ad display logic
-        buttonText="WATCH ADD";
-        if(!_isAdLoading && _interstitialAd != null){
-          _showInterstitialAd();
-          buttonText="SPIN";
-        }
-        print("Time to show an ad!");
-        // ShowAd(); // Uncomment this and implement the function to show an ad
-      }
-      else{
-        buttonText="SPIN";
+        buttonText = "WATCH AD";
+      } else {
+        buttonText = "SPIN";
       }
     });
+
+    if (buttonText == "WATCH AD") {
+      if (_interstitialAd != null) {
+        _showInterstitialAd();
+        buttonText = "SPIN";  // Consider moving this inside _showInterstitialAd as a final step
+      } else {
+        print("No ad loaded yet, retrying...");
+        _createInterstitialAd(); // Optionally trigger another load if not already loading
+      }
+    } else {
+      setState(() {
+        selected.add(Fortune.randomInt(0, items.length));
+      });
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
