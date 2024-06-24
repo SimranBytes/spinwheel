@@ -6,7 +6,13 @@ import 'package:firebase_core/firebase_core.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MobileAds.instance.initialize();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: FirebaseOptions(
+        apiKey: "AIzaSyDrwVWSo7nPANVN3XuJfGbf7-vJ9fAo2-o",
+        appId: "1:286859342101:android:1227845cb567ef1c3b391c",
+        messagingSenderId: "286859342101",
+        projectId: "spinwheel-ee5cd")
+  );
 }
 
 class MyApp extends StatelessWidget {

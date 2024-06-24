@@ -1,10 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 
 class AdHelper {
   static String get interstitialAdUnitId {
@@ -34,7 +33,6 @@ class _SpinWheelState extends State<SpinWheel> {
   InterstitialAd? _interstitialAd;
   int _numInterstitialLoadAttempts = 0;
   int maxFailedLoadAttempts = 3;
-  int clickCount = 0;
 
   @override
   void initState() {
@@ -53,24 +51,25 @@ class _SpinWheelState extends State<SpinWheel> {
 
   void _createInterstitialAd() {
     InterstitialAd.load(
-        adUnitId: AdHelper.interstitialAdUnitId,
-        request: AdRequest(),
-        adLoadCallback: InterstitialAdLoadCallback(
-          onAdLoaded: (InterstitialAd ad) {
-            print('$ad loaded');
-            _interstitialAd = ad;
-            _numInterstitialLoadAttempts = 0;
-            _interstitialAd!.setImmersiveMode(true);
-          },
-          onAdFailedToLoad: (LoadAdError error) {
-            print('InterstitialAd failed to load: $error.');
-            _numInterstitialLoadAttempts += 1;
-            _interstitialAd = null;
-            if (_numInterstitialLoadAttempts < maxFailedLoadAttempts) {
-              _createInterstitialAd();
-            }
-          },
-        ));
+      adUnitId: AdHelper.interstitialAdUnitId,
+      request: AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (InterstitialAd ad) {
+          print('$ad loaded');
+          _interstitialAd = ad;
+          _numInterstitialLoadAttempts = 0;
+          _interstitialAd!.setImmersiveMode(true);
+        },
+        onAdFailedToLoad: (LoadAdError error) {
+          print('InterstitialAd failed to load: $error.');
+          _numInterstitialLoadAttempts += 1;
+          _interstitialAd = null;
+          if (_numInterstitialLoadAttempts < maxFailedLoadAttempts) {
+            _createInterstitialAd();
+          }
+        },
+      ),
+    );
   }
 
   void _showInterstitialAd() {
@@ -79,7 +78,8 @@ class _SpinWheelState extends State<SpinWheel> {
       return;
     }
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (InterstitialAd ad) => print('ad onAdShowedFullScreenContent.'),
+      onAdShowedFullScreenContent: (InterstitialAd ad) =>
+          print('ad onAdShowedFullScreenContent.'),
       onAdDismissedFullScreenContent: (InterstitialAd ad) {
         print('$ad onAdDismissedFullScreenContent.');
         ad.dispose();
@@ -101,6 +101,15 @@ class _SpinWheelState extends State<SpinWheel> {
     _interstitialAd = null;
   }
 
+  @override
+  void dispose() {
+    _interstitialAd?.dispose();
+    selected.close();
+    super.dispose();
+  }
+
+  int clickCount = 0;
+
   void _handleButtonClick() {
     setState(() {
       print('Click Count ' + clickCount.toString());
@@ -120,16 +129,11 @@ class _SpinWheelState extends State<SpinWheel> {
         _createInterstitialAd();
       }
     } else {
-      selected.add(Fortune.randomInt(0, items.length));
+      setState(() {
+        selected.add(Fortune.randomInt(0, items.length));
+      });
       clickCount++;
     }
-  }
-
-  @override
-  void dispose() {
-    _interstitialAd?.dispose();
-    selected.close();
-    super.dispose();
   }
 
   @override
@@ -145,46 +149,46 @@ class _SpinWheelState extends State<SpinWheel> {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              height: 300,
-              child: items.isEmpty
-                  ? Center(child: CircularProgressIndicator())
-                  : FortuneWheel(
-                selected: selected.stream,
-                animateFirst: false,
-                items: [
-                  for (int i = 0; i < items.length; i++)
-                    FortuneItem(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(items[i]['name'].toString()),
-                          if (items[i]['image'] != null)
-                            Image.network(
-                              items[i]['image'].toString(),
-                              height: 50,
-                            ),
-                        ],
+            if (items.isEmpty) CircularProgressIndicator(),
+            if (items.isNotEmpty)
+              SizedBox(
+                height: 300,
+                child: FortuneWheel(
+                  selected: selected.stream,
+                  animateFirst: false,
+                  items: [
+                    for (int i = 0; i < items.length; i++)
+                      FortuneItem(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(items[i]['name'].toString()),
+                            if (items[i]['image'] != null)
+                              Image.network(
+                                items[i]['image'].toString(),
+                                height: 50,
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                ],
-                onAnimationEnd: () {
-                  setState(() {
-                    rewards = items[selected.value]['value'];
-                  });
-                  print(rewards);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("You just won " + rewards.toString() + " Points!"),
-                      backgroundColor: Colors.blueAccent,
-                      behavior: SnackBarBehavior.floating,
-                      margin: EdgeInsets.all(50),
-                      elevation: 30,
-                    ),
-                  );
-                },
+                  ],
+                  onAnimationEnd: () {
+                    setState(() {
+                      rewards = items[selected.value]['value'];
+                    });
+                    print(rewards);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("You just won " + rewards.toString() + " Points!"),
+                        backgroundColor: Colors.blueAccent,
+                        behavior: SnackBarBehavior.floating,
+                        margin: EdgeInsets.all(50),
+                        elevation: 30,
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
             SizedBox(height: 40),
             GestureDetector(
               onTap: _handleButtonClick,
