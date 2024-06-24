@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "286859342101",
+    "project_id": "spinwheel-ee5cd",
+    "storage_bucket": "spinwheel-ee5cd.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:286859342101:android:1227845cb567ef1c3b391c",
+        "android_client_info": {
+          "package_name": "com.example.spinwheel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrwVWSo7nPANVN3XuJfGbf7-vJ9fAo2-o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
