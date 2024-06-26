@@ -26,8 +26,7 @@ class SpinWheel extends StatefulWidget {
 
 class _SpinWheelState extends State<SpinWheel> {
   final selected = BehaviorSubject<int>();
-  int rewards = 0;
-
+  Map<String, dynamic> rewards= {};
   List<Map<String, dynamic>> items = [];
   String buttonText = "SPIN";
   InterstitialAd? _interstitialAd;
@@ -38,16 +37,49 @@ class _SpinWheelState extends State<SpinWheel> {
   void initState() {
     super.initState();
     _createInterstitialAd();
-    fetchRewards();
+    _fetchRewards();
   }
 
-  Future<void> fetchRewards() async {
-    FirebaseFirestore firestore = FirebaseFirestore.instance;
-    QuerySnapshot snapshot = await firestore.collection('rewards').get();
-    setState(() {
-      items = snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
-    });
+
+  Future<void> _fetchRewards() async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('Rewards').get();
+      List<Map<String, dynamic>> fetchedItems = querySnapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return {
+          "name": data['name'] ?? "No Name",
+          "value": data['value'] ?? 0,
+          "image": data['image'] ?? "https://example.com/default_image.png"
+        };
+      }).toList();
+
+      if (fetchedItems.isEmpty) {
+        // Provide some default rewards if none are found in Firestore
+        fetchedItems = [
+          {"name": "Better Luck next time", "value": 0, "image": "https://example.com/default_image.png"},
+          {"name": "10 Points", "value": 10, "image": "https://example.com/10_points.png"},
+          {"name": "20 Points", "value": 20, "image": "https://example.com/20_points.png"},
+        ];
+      }
+
+      setState(() {
+        items = fetchedItems;
+      });
+    } catch (e) {
+      print('Failed to fetch rewards: $e');
+      // Provide some default rewards in case of an error
+      setState(() {
+        items = [
+          {"name": "Better Luck next time", "value": 0, "image": "https://example.com/default_image.png"},
+          {"name": "10 Points", "value": 10, "image": "https://example.com/10_points.png"},
+          {"name": "20 Points", "value": 20, "image": "https://example.com/20_points.png"},
+        ];
+      });
+    }
   }
+
+
+
 
   void _createInterstitialAd() {
     InterstitialAd.load(
@@ -135,74 +167,187 @@ class _SpinWheelState extends State<SpinWheel> {
       clickCount++;
     }
   }
+  List<Color> _colors = [
+    Colors.red,
+    Colors.orange,
+    Colors.yellow,
+    Colors.green,
+    Colors.blue,
+    Colors.indigo,
+    Colors.purple,
+  ];
+
+  Color _getColor(int index) {
+    return _colors[index % _colors.length];
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor:Colors.black38,
       appBar: AppBar(
-        title: Text("Spin Your Luck"),
+        title: Text("Spin Your Luck",
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         centerTitle: true,
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.white12,
       ),
       body: Center(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (items.isEmpty) CircularProgressIndicator(),
-            if (items.isNotEmpty)
+            if (items.isEmpty)
+              CircularProgressIndicator()
+            else if (items.length > 1)
+
               SizedBox(
-                height: 300,
+                height: 350,
                 child: FortuneWheel(
                   selected: selected.stream,
                   animateFirst: false,
                   items: [
-                    for (int i = 0; i < items.length; i++)
+                    for (int i = 0; i < items.length; i++) ...<FortuneItem>{
                       FortuneItem(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(items[i]['name'].toString()),
-                            if (items[i]['image'] != null)
-                              Image.network(
-                                items[i]['image'].toString(),
-                                height: 50,
-                              ),
-                          ],
+                        style: FortuneItemStyle(
+                          color: _getColor(i),
+                          borderColor: Colors.black,
+                          borderWidth: 3,
                         ),
+                        child: Text(items[i]['name'], style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black)),
                       ),
+                    },
                   ],
                   onAnimationEnd: () {
                     setState(() {
-                      rewards = items[selected.value]['value'];
+                      rewards = items[selected.value];
                     });
                     print(rewards);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text("You just won " + rewards.toString() + " Points!"),
+                        content: Text("You just won ${rewards['name']} worth of ${rewards['value']} !"),
                         backgroundColor: Colors.blueAccent,
                         behavior: SnackBarBehavior.floating,
-                        margin: EdgeInsets.all(50),
+                        margin: EdgeInsets.all(20),
                         elevation: 30,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     );
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.network(
+                                  rewards['image'],
+                                  width: 100,
+                                  height: 100,
+                                  errorBuilder: (BuildContext context, Object exception, StackTrace? stackTrace)
+                                    {
+                                        return Image.network(
+                                          "https://example.com/default_image.png",
+                                          width: 100,
+                                          height: 100
+                                        );
+                                    },
+                              ),
+                              SizedBox(height: 10),
+                              Text(rewards['name'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: Text("Close"),
+                            ),
+                          ],
+                        );
+                      },
+                    );
                   },
+                  indicators: <FortuneIndicator>[
+                    FortuneIndicator(
+                      alignment: Alignment.center,
+                      child: RoundIndicator(color: Colors.red),
+                    ),
+                  ],
                 ),
               ),
+            SizedBox(height: 40),
+            Text(
+              "Play now to reveal your prize",
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 40),
             GestureDetector(
               onTap: _handleButtonClick,
               child: Container(
                 height: 40,
-                width: 120,
-                color: Colors.deepPurpleAccent,
+                width: 200, // Make the button slimmer
+                decoration: BoxDecoration(
+                  color: Colors.deepPurpleAccent,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 3,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
                 child: Center(
-                  child: Text(buttonText),
+                  child: Text(
+                    buttonText,
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-            ),
+            )
           ],
         ),
+      ),
+    );
+  }
+}
+
+class RoundIndicator extends StatelessWidget {
+  final Color color;
+
+  const RoundIndicator({Key? key, required this.color}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white12,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            spreadRadius: 3,
+            blurRadius: 5,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Center(
+          child: Text(
+            '▲',
+            style: TextStyle(color: Colors.white, fontSize: 24),
+          ),
       ),
     );
   }
