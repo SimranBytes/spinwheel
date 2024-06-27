@@ -4,6 +4,9 @@ import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:confetti/confetti.dart';
+
 
 class AdHelper {
   static String get interstitialAdUnitId {
@@ -38,7 +41,20 @@ class _SpinWheelState extends State<SpinWheel> {
     super.initState();
     _createInterstitialAd();
     _fetchRewards();
+    _confettiController = ConfettiController(duration: Duration(seconds: 3));
   }
+
+  AudioPlayer audioPlayer = AudioPlayer();
+  ConfettiController _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+
+  void _playSound(String path) async {
+    try {
+      await audioPlayer.play(AssetSource(path));
+    } catch (e) {
+      print("Error playing sound: $e");
+    }
+  }
+
 
 
   Future<void> _fetchRewards() async {
@@ -137,6 +153,8 @@ class _SpinWheelState extends State<SpinWheel> {
   void dispose() {
     _interstitialAd?.dispose();
     selected.close();
+    audioPlayer.dispose(); // Ensure the audio player is also disposed
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -161,6 +179,7 @@ class _SpinWheelState extends State<SpinWheel> {
         _createInterstitialAd();
       }
     } else {
+      _playSound('assets/wheel.mp3');
       setState(() {
         selected.add(Fortune.randomInt(0, items.length));
       });
@@ -227,18 +246,25 @@ class _SpinWheelState extends State<SpinWheel> {
                       rewards = items[selected.value];
                     });
                     print(rewards);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text("You just won ${rewards['name']} worth of ${rewards['value']} !"),
-                        backgroundColor: Colors.blueAccent,
-                        behavior: SnackBarBehavior.floating,
-                        margin: EdgeInsets.all(20),
-                        elevation: 30,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    if (rewards['value'] == 0 || rewards['name'].toLowerCase().contains('better luck next time')) {
+                      _playSound('assets/winning.mp3');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text("Better luck next time!"),
+                            backgroundColor: Colors.red,
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      _playSound('assets/winning.mp3');
+                      _confettiController.play();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text("You just won ${rewards['name']} worth of ${rewards['value']}!"),
+                            backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+
                     showDialog(
                       context: context,
                       builder: (BuildContext context) {
