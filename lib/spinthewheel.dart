@@ -46,9 +46,9 @@ class _SpinWheelState extends State<SpinWheel> {
     super.initState();
     _createInterstitialAd();
     _fetchRewards();
-    player1.setSourceUrl('assets/sounds/wheel.mp3');
-    player2.setSourceUrl('assets/sounds/winning.mp3');
-    player3.setSourceUrl('assets/sounds/winning.mp3');
+    // player1.setSourceUrl('assets/sounds/wheel.mp3');
+    // player2.setSourceUrl('assets/sounds/winning.mp3');
+    // player3.setSourceUrl('assets/sounds/winning.mp3');
   }
 
   Future<void> _fetchRewards() async {
@@ -257,7 +257,7 @@ class _SpinWheelState extends State<SpinWheel> {
                         );
                       } else {
                         _controller.play();
-                        player2.play(AssetSource('sounds/winning.mp3'));
+                        player2.play(AssetSource('sounds/win.mp3'));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                               content: Text("You just won ${rewards['name']} worth of ${rewards['value']}!"),
