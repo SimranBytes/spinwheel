@@ -46,9 +46,10 @@ class _SpinWheelState extends State<SpinWheel> {
     super.initState();
     _createInterstitialAd();
     _fetchRewards();
-    // player1.setSourceUrl('assets/sounds/wheel.mp3');
-    // player2.setSourceUrl('assets/sounds/winning.mp3');
-    // player3.setSourceUrl('assets/sounds/winning.mp3');
+    
+     player1.setSourceUrl('assets/sounds/wheel.mp3');
+     player2.setSourceUrl('assets/sounds/winning.mp3');
+     player3.setSourceUrl('assets/sounds/winning.mp3');
   }
 
   Future<void> _fetchRewards() async {
